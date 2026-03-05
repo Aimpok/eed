@@ -28,7 +28,6 @@ export default async function handler(req, res) {
 
     const whisperData = await whisperResponse.json();
     
-    // ПРОВЕРКА ОШИБКИ WHISPER:
     if (whisperData.error) {
        return res.status(500).json({ error: 'Ошибка Whisper (STT)', details: whisperData.error });
     }
@@ -39,7 +38,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Не удалось распознать речь' });
     }
 
-    // --- 2. Запрос к LLM (Генерация ответа) ---
+    // --- 2. Запрос к Llama 3.3 70B ---
     const llmResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -47,11 +46,11 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'llama3-8b-8192',
+        model: 'llama-3.3-70b-versatile', // <-- Подключили самую умную Llama
         messages: [
           { 
             role: 'system', 
-            content: 'Ты умный и краткий голосовой помощник. Отвечай максимально коротко (1-2 предложения).' 
+            content: 'Ты дружелюбный и умный голосовой помощник. Отвечай емко, так как текст пойдет на маленький экран. Если решаешь задачи по алгебре, строго обязательно указывай ОДЗ и выписывай все коэффициенты перед началом решения.' 
           },
           { role: 'user', content: userText }
         ]
@@ -60,13 +59,10 @@ export default async function handler(req, res) {
 
     const llmData = await llmResponse.json();
 
-    // ПРОВЕРКА ОШИБКИ LLM:
     if (llmData.error) {
-        // Если Groq вернул ошибку, возвращаем ее клиенту, чтобы не крашить сервер
         return res.status(500).json({ error: 'Ошибка Groq LLM', details: llmData.error });
     }
 
-    // Если всё ок, парсим ответ
     const replyText = llmData.choices[0].message.content;
 
     return res.status(200).json({ 
